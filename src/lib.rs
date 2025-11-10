@@ -117,7 +117,7 @@ where
 {
     network_interface: smoltcp::iface::Interface,
     device: Device,
-    sockets: smoltcp::iface::SocketSet<'a>,
+    pub sockets: smoltcp::iface::SocketSet<'a>,
     dhcp_handle: Option<SocketHandle>,
     dns_handle: Option<SocketHandle>,
     dns_lookups: heapless::LinearMap<heapless::String<255>, smoltcp::socket::dns::QueryHandle, 2>,
