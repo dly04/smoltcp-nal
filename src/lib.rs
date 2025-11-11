@@ -436,37 +436,32 @@ where
 
 
     pub fn log_tcp_connections(&mut self) {
-        log::info!("=== TCP Connection Info ===");
-        
-        let mut tcp_count = 0;
-        let mut active_count = 0;
-        
-        for (handle, socket) in self.sockets.iter() {
-            if let smoltcp::socket::Socket::Tcp(tcp_socket) = socket {
-                tcp_count += 1;
-                
-                let local_endpoint = tcp_socket.local_endpoint();
-                let remote_endpoint = tcp_socket.remote_endpoint();
-                let state = tcp_socket.state();
-                
-                if tcp_socket.is_active() {
-                    active_count += 1;
-                    
-                    let local_port = local_endpoint.map(|ep| ep.port).unwrap_or(0);
-                    // let remote_addr = remote_endpoint.map(|ep| ep.addr).unwrap_or(IpAddress::Unspecified);
-                    let remote_port = remote_endpoint.map(|ep| ep.port).unwrap_or(0);
-                    
-                    log::info!("ACTIVE - Handle: {:?}, Local Port {} -> {} [State: {:?}]", 
-                              handle, local_port, remote_port, state);
-                } else {
-                    log::info!("INACTIVE - Handle: {:?}, State: {:?}", handle, state);
+    info!("=== TCP Socket States ===");
+    
+    let mut stats = [0, 0, 0]; // [listening, outbound, inactive]
+    
+    for (handle, socket) in self.sockets.iter() {
+        if let smoltcp::socket::Socket::Tcp(tcp_socket) = socket {
+            if tcp_socket.is_listening() {
+                stats[0] += 1;
+                let port = tcp_socket.local_endpoint().map(|ep| ep.port).unwrap_or(0);
+                info!("LISTENING - Port: {}, Handle: {:?}", port, handle);
+            } else if tcp_socket.is_active() {
+                stats[1] += 1;
+                let local_port = tcp_socket.local_endpoint().map(|ep| ep.port).unwrap_or(0);
+                if let Some(remote) = tcp_socket.remote_endpoint() {
+                    info!("OUTBOUND - {} -> {}:{}", local_port, remote.addr, remote.port);
                 }
+            } else {
+                stats[2] += 1;
+                info!("INACTIVE - Handle: {:?}", handle);
             }
         }
-        
-        log::info!("Summary: {}/{} TCP sockets active", active_count, tcp_count);
-        log::info!("============================");
     }
+    
+    info!("Summary: Listen={}, Outbound={}, Inactive={}", stats[0], stats[1], stats[2]);
+    info!("============================");
+}
 }
 
 impl<Device, Clock> TcpClientStack for NetworkStack<'_, Device, Clock>
